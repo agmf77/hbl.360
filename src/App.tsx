@@ -767,11 +767,14 @@ export default function App() {
               demandNotices={demandNotices}
               settings={settings}
               currentUser={currentUser}
+              employees={employees}
               onCreateDemandNotice={handleCreateDemandNotice}
               onOpenLedger={(loanId) => setSelectedLedgerLoanId(loanId)}
               onOpenRepayment={(loanId) => handleOpenSingleRepayment(loanId)}
               onOpenMultiRepayment={handleOpenMultiRepayment}
               onOpenTransfer={(loan) => setTransferModalLoan(loan)}
+              onToggleStatus={handleToggleLoanStatus}
+              onRefresh={refreshAllData}
               isProcessing={isProcessing}
             />
           )}
@@ -806,7 +809,15 @@ export default function App() {
           )}
 
           {activeTab === 'fiscal_year' && (
-            <FiscalYearView settings={settings} />
+            <FiscalYearView
+              settings={settings}
+              loans={loans}
+              employees={employees}
+              repayments={repayments}
+              bankAdvices={bankAdvices}
+              onOpenLedger={(loanId) => setSelectedLedgerLoanId(loanId)}
+              onRefresh={refreshAllData}
+            />
           )}
 
           {activeTab === 'employee_portal' && (
