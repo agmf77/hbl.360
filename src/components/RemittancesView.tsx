@@ -15,6 +15,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { BankAdvice, Loan, Repayment, PbsSettings, UserSession } from '../types';
+import { OfficialAdviceDocumentsModal } from './OfficialAdviceDocumentsModal';
 
 interface RemittancesViewProps {
   bankAdvices: BankAdvice[];
@@ -65,42 +66,72 @@ export const RemittancesView: React.FC<RemittancesViewProps> = ({
   const [error, setError] = useState('');
 
   // Eligible transferred loans with other PBS
-  const transferredLoans = loans.filter(l => l.loanSource === 'other');
-  const [selectedItems, setSelectedItems] = useState<{ [key: string]: boolean }>({});
+  const transferredLoans = useMemo(() => {
+    return loans.filter(l => l.loanSource === 'other');
+  }, [loans]);
+
+  const [selectedLoanIds, setSelectedLoanIds] = useState<{ [key: string]: boolean }>({});
 
   const handleOpenCreate = () => {
+    setError('');
+    // Pre-select all transferred loans by default
     const preselected: { [key: string]: boolean } = {};
-    repayments.filter(r => r.sourceType === 'inter_pbs').slice(0, 3).forEach(r => {
-      preselected[`${r.loanId}-${r.repaymentMonth}`] = true;
+    transferredLoans.forEach(l => {
+      preselected[l.id] = true;
     });
-    setSelectedItems(preselected);
+    setSelectedLoanIds(preselected);
     setShowCreateModal(true);
   };
 
+  const handleToggleLoan = (loanId: string) => {
+    setSelectedLoanIds(prev => {
+      const next = { ...prev, [loanId]: !prev[loanId] };
+      if (Object.values(next).some(Boolean)) {
+        setError('');
+      }
+      return next;
+    });
+  };
+
+  const handleToggleSelectAll = () => {
+    const allSelected = transferredLoans.length > 0 && transferredLoans.every(l => selectedLoanIds[l.id]);
+    const next: { [key: string]: boolean } = {};
+    if (!allSelected) {
+      transferredLoans.forEach(l => {
+        next[l.id] = true;
+      });
+      setError('');
+    }
+    setSelectedLoanIds(next);
+  };
+
+  const selectedLoansCount = useMemo(() => {
+    return transferredLoans.filter(l => selectedLoanIds[l.id]).length;
+  }, [transferredLoans, selectedLoanIds]);
+
+  const selectedLoansTotalAmount = useMemo(() => {
+    return transferredLoans
+      .filter(l => selectedLoanIds[l.id])
+      .reduce((sum, l) => sum + (l.monthlyInstallment || 0), 0);
+  }, [transferredLoans, selectedLoanIds]);
+
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const items = [];
-    for (const key of Object.keys(selectedItems)) {
-      if (selectedItems[key]) {
-        const [loanId, month] = key.split('-');
-        const loan = loans.find(l => l.id === loanId);
-        if (loan) {
-          items.push({
-            loanId: loan.id,
-            employeeId: loan.employeeId,
-            payId: loan.payId,
-            employeeNameBn: loan.employeeNameBn,
-            installmentMonth: month || '2026-10',
-            amount: loan.monthlyInstallment
-          });
-        }
-      }
-    }
+    const selectedLoansList = transferredLoans.filter(l => selectedLoanIds[l.id]);
 
-    if (items.length === 0) {
+    if (selectedLoansList.length === 0) {
       setError('দয়া করে অন্তত একজন কর্মচারীর কিস্তি নির্বাচন করুন।');
       return;
     }
+
+    const items = selectedLoansList.map(loan => ({
+      loanId: loan.id,
+      employeeId: loan.employeeId,
+      payId: loan.payId,
+      employeeNameBn: loan.employeeNameBn,
+      installmentMonth: monthDescInput || 'অক্টোবর/২০২৬ মাস',
+      amount: loan.monthlyInstallment || 0
+    }));
 
     try {
       setError('');
@@ -376,285 +407,194 @@ export const RemittancesView: React.FC<RemittancesViewProps> = ({
         </div>
       </div>
 
-      {/* Official Bank Advice Letter Preview & Print Modal */}
+      {/* 3-in-1 Official Document Viewer & Print Modal (পবিস অবহিতকরণ পত্র, ব্যাংক অ্যাডভাইস, অফিস নোট) */}
       {previewAdvice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-2 sm:p-4 backdrop-blur-xs overflow-y-auto">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-300 w-full max-w-4xl overflow-hidden my-4 print-card flex flex-col max-h-[92vh]">
-            {/* Modal Toolbar (no-print) */}
-            <div className="px-5 py-3 border-b border-slate-200 flex items-center justify-between bg-slate-50 no-print shrink-0">
-              <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4 text-emerald-600" />
-                <span className="font-bold text-slate-800 text-xs sm:text-sm">
-                  সরকারি পত্র ও ব্যাংক ট্রান্সফার অ্যাডভাইস ({previewAdvice.adviceNo})
-                </span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handlePrint}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 shadow-2xs transition-colors"
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>প্রিন্ট / PDF</span>
-                </button>
-                <button
-                  onClick={() => setPreviewAdvice(null)}
-                  className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Official Letterhead & Letter Body */}
-            <div className="p-6 sm:p-10 overflow-y-auto space-y-6 text-xs text-slate-900 bg-white font-sans">
-              {/* BREB & PBS Letterhead */}
-              <div className="flex items-center justify-between border-b-2 border-slate-900 pb-3 gap-4">
-                {settings.logoUrl ? (
-                  <img src={settings.logoUrl} alt="Logo" className="w-14 h-14 object-contain rounded" />
-                ) : (
-                  <div className="w-12 h-12 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
-                    বাপবিবো
-                  </div>
-                )}
-                <div className="text-center flex-1">
-                  <div className="font-bold text-sm sm:text-base text-slate-900">
-                    {settings.boardNameBn}
-                  </div>
-                  <div className="font-bold text-base sm:text-lg text-slate-950 mt-0.5">
-                    {previewAdvice.fromPbs || settings.pbsNameBn}
-                  </div>
-                  <div className="text-xs text-slate-600 mt-0.5">
-                    {settings.addressBn} · ফোন: {settings.phone} · ইমেইল: {settings.email}
-                  </div>
-                  <div className="text-[11px] text-emerald-800 font-semibold mt-1">
-                    অর্থ ও হিসাব বিভাগ · ব্যাংক ট্রান্সফার শাখা
-                  </div>
-                </div>
-                <div className="w-16 text-right hidden sm:block shrink-0">
-                  <span className="text-[10px] text-slate-400 block font-medium">স্মারক কোড</span>
-                  <span className="text-xs font-mono font-bold text-slate-700">{settings.memoPrefix}</span>
-                </div>
-              </div>
-
-              {/* Memo & Date Row */}
-              <div className="flex justify-between items-center text-xs pt-1 font-semibold border-b border-slate-100 pb-2">
-                <div>স্মারক নং: <span className="font-num text-slate-900 font-bold">{previewAdvice.memoNo}</span></div>
-                <div>তারিখ: <span className="font-num text-slate-900">{toBnNumber(previewAdvice.adviceDate)}</span> খ্রি.</div>
-              </div>
-
-              {/* Addressee */}
-              <div className="text-xs space-y-0.5 text-slate-800">
-                <div>বরাবর,</div>
-                <div className="font-bold">ব্যবস্থাপক</div>
-                <div>{previewAdvice.bankName}</div>
-                <div className="text-slate-500">বিষয়: ব্যাংক ট্রান্সফার / BEFTN মূলে গৃহ ঋণ কিস্তি কর্তনের অর্থ প্রেরণ।</div>
-              </div>
-
-              {/* Subject */}
-              <div className="text-xs font-bold pt-2 pb-2 border-y border-slate-200 text-slate-900 bg-slate-50/50 px-2 rounded">
-                বিষয়: কর্মকর্তা-কর্মচারীদের গৃহ নির্মাণ ঋণের কিস্তি কর্তনের অর্থ BEFTN / ব্যাংক ট্রান্সফার মূলে <span className="underline decoration-slate-400">{previewAdvice.toPbs}</span> এর অনুকূলে প্রেরণ প্রসঙ্গে।
-              </div>
-
-              {/* Body */}
-              <p className="text-xs leading-relaxed text-justify text-slate-800">
-                মহোদয়,<br />
-                উপর্যুক্ত বিষয়ের প্রেক্ষিতে জানানো যাচ্ছে যে, <strong>{previewAdvice.toPbs}</strong> হতে গৃহ নির্মাণ ঋণ গ্রহণপূর্বক বর্তমানে অত্র সমিতিতে কর্মরত কর্মকর্তা/কর্মচারীর {getMonthDisplayText(previewAdvice)} এর বেতন হতে কর্তিত কিস্তির সর্বমোট <strong className="font-num">৳ {previewAdvice.totalAmount.toLocaleString()}</strong> ({previewAdvice.amountInWordsBn}) সংশ্লিষ্ট সমিতির ব্যাংক হিসাবে প্রেরণের নিমিত্তে নিম্নে উল্লেখিত হিসাব নম্বরে ব্যাংক ট্রান্সফার / BEFTN করার জন্য অনুরোধ করা হলো:
-              </p>
-
-              {/* Account Details Box */}
-              <div className="p-4 rounded-xl border border-slate-300 bg-slate-50 text-xs space-y-1.5">
-                <div><strong>প্রাপক পবিসের নাম:</strong> <span className="text-slate-900 font-semibold">{previewAdvice.toPbs}</span></div>
-                <div><strong>প্রাপকের ব্যাংকের নাম ও শাখা:</strong> {previewAdvice.bankName}</div>
-                <div><strong>হিসাব নম্বর:</strong> <span className="font-num font-bold text-slate-900">{previewAdvice.accountNo}</span></div>
-                <div><strong>রাউটিং নম্বর:</strong> <span className="font-num font-bold text-slate-900">{previewAdvice.routingNo}</span></div>
-                <div><strong>মোট টাকার পরিমাণ:</strong> <span className="font-num font-bold text-emerald-900">৳ {previewAdvice.totalAmount.toLocaleString()}</span> ({previewAdvice.amountInWordsBn})</div>
-              </div>
-
-              {/* Enclosed Table of Deductions */}
-              <div>
-                <div className="text-xs font-bold mb-2 text-slate-800">সংযুক্ত কর্মকর্তা/কর্মচারীদের কিস্তি কর্তন বিবরণী:</div>
-                <table className="w-full text-xs text-left border border-slate-300 rounded-lg overflow-hidden">
-                  <thead className="bg-slate-100 font-bold border-b border-slate-300 text-slate-700">
-                    <tr>
-                      <th className="p-2 border-r border-slate-300 text-center w-12">ক্রমিক</th>
-                      <th className="p-2 border-r border-slate-300">কর্মচারীর নাম ও পদবী</th>
-                      <th className="p-2 border-r border-slate-300 text-center w-24">পে-আইডি</th>
-                      <th className="p-2 border-r border-slate-300 text-center">কিস্তির মাস</th>
-                      <th className="p-2 text-right w-28">টাকার পরিমাণ</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-200 font-num">
-                    {previewAdvice.items.map((item, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
-                        <td className="p-2 border-r border-slate-300 text-center">{idx + 1}</td>
-                        <td className="p-2 border-r border-slate-300 font-sans font-medium text-slate-900">{item.employeeNameBn}</td>
-                        <td className="p-2 border-r border-slate-300 text-center">{item.payId}</td>
-                        <td className="p-2 border-r border-slate-300 text-center font-sans">{item.installmentMonth}</td>
-                        <td className="p-2 text-right font-bold text-slate-900">৳ {item.amount.toLocaleString()}</td>
-                      </tr>
-                    ))}
-                    <tr className="bg-slate-100 font-bold">
-                      <td colSpan={4} className="p-2 text-right border-r border-slate-300 font-sans text-slate-800">
-                        সর্বমোট প্রদেয় টাকা:
-                      </td>
-                      <td className="p-2 text-right text-emerald-950 font-bold">
-                        ৳ {previewAdvice.totalAmount.toLocaleString()}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Signatures Block (AGM Finance & GM) */}
-              <div className="pt-14 grid grid-cols-2 gap-12 text-center text-xs">
-                <div>
-                  <div className="font-bold border-t border-slate-400 pt-1 text-slate-900">{previewAdvice.agmFinanceName}</div>
-                  <div className="text-[11px] text-slate-600">এজিএম (অর্থ-হিসাব)</div>
-                  <div className="text-[10px] text-slate-400">{previewAdvice.fromPbs || settings.pbsNameBn}</div>
-                </div>
-
-                <div>
-                  <div className="font-bold border-t border-slate-400 pt-1 text-slate-900">{previewAdvice.gmName}</div>
-                  <div className="text-[11px] text-slate-600">জেনারেল ম্যানেজার</div>
-                  <div className="text-[10px] text-slate-400">{previewAdvice.fromPbs || settings.pbsNameBn}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        <OfficialAdviceDocumentsModal
+          advice={previewAdvice}
+          loans={loans}
+          settings={settings}
+          currentUser={currentUser}
+          onClose={() => setPreviewAdvice(null)}
+        />
       )}
 
       {/* Create New Advice Modal */}
       {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl border border-slate-200 w-full max-w-lg overflow-hidden flex flex-col max-h-[90vh]">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-              <h3 className="font-bold text-slate-900 text-sm md:text-base">
-                নতুন ব্যাংক অ্যাডভাইস ও সরকারি পত্র প্রস্তুত
-              </h3>
-              <button onClick={() => setShowCreateModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-4 h-4" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/65 p-4 backdrop-blur-xs">
+          <div className="bg-white rounded-2xl shadow-2xl border-2 border-slate-300 w-full max-w-2xl overflow-hidden flex flex-col max-h-[92vh]">
+            <div className="px-6 py-4.5 border-b-2 border-slate-200 flex items-center justify-between bg-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-xs">
+                  <Plus className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-950 text-base sm:text-lg">
+                    নতুন ব্যাংক অ্যাডভাইস ও সরকারি পত্র প্রস্তুত
+                  </h3>
+                  <p className="text-xs font-semibold text-slate-700">
+                    অন্যান্য পবিসের কর্মকর্তা-কর্মচারীদের কর্তিত কিস্তির ব্যাংক ট্রান্সফার অ্যাডভাইস
+                  </p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCreateModal(false)} 
+                className="text-slate-500 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-200 transition-colors border border-transparent hover:border-slate-300"
+                title="বন্ধ করুন"
+              >
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleCreateSubmit} className="p-5 overflow-y-auto space-y-4 text-xs">
+            <form onSubmit={handleCreateSubmit} className="p-6 overflow-y-auto space-y-4 text-xs sm:text-sm">
               {error && (
-                <div className="p-3 rounded-lg bg-red-50 border border-red-200 text-red-700">
-                  {error}
+                <div className="p-3.5 rounded-xl bg-red-50 border-2 border-red-300 text-red-900 flex items-center gap-2.5 font-bold animate-in fade-in">
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+                  <span>{error}</span>
                 </div>
               )}
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">প্রাপক পবিসের নাম *</label>
+                <label className="block font-extrabold text-slate-900 mb-1">প্রাপক পবিসের নাম *</label>
                 <input
                   type="text"
                   value={targetPbs}
                   onChange={(e) => setTargetPbs(e.target.value)}
                   placeholder="উদা: কুমিল্লা পল্লী বিদ্যুৎ সমিতি-১ বা সকল পবিস"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 font-medium text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-lg border-2 border-slate-300 font-semibold text-slate-950 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
                   required
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">কর্তন মাসের বিবরণ</label>
+                <label className="block font-extrabold text-slate-900 mb-1">কর্তন মাসের বিবরণ</label>
                 <input
                   type="text"
                   value={monthDescInput}
                   onChange={(e) => setMonthDescInput(e.target.value)}
                   placeholder="উদা: অক্টোবর/২০২৬ মাস বা অক্টোবর হতে নভেম্বর পর্যন্ত (২ মাস)"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-full px-3.5 py-2.5 rounded-lg border-2 border-slate-300 font-semibold text-slate-950 text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">প্রাপকের ব্যাংক ও শাখা</label>
+                  <label className="block font-extrabold text-slate-900 mb-1">প্রাপকের ব্যাংক ও শাখা</label>
                   <input
                     type="text"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs"
+                    className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 font-semibold text-slate-950 text-xs sm:text-sm shadow-2xs focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">প্রাপকের ব্যাংক হিসাব নং</label>
+                  <label className="block font-extrabold text-slate-900 mb-1">প্রাপকের ব্যাংক হিসাব নং</label>
                   <input
                     type="text"
                     value={accountNo}
                     onChange={(e) => setAccountNo(e.target.value)}
-                    className="w-full px-3 py-2 rounded-lg border border-slate-300 font-num text-xs"
+                    className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 text-xs sm:text-sm shadow-2xs focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">ব্যাংক রাউটিং নম্বর</label>
+                <label className="block font-extrabold text-slate-900 mb-1">ব্যাংক রাউটিং নম্বর</label>
                 <input
                   type="text"
                   value={routingNo}
                   onChange={(e) => setRoutingNo(e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 font-num text-xs"
+                  className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 text-xs sm:text-sm shadow-2xs focus:border-emerald-600 focus:outline-none"
                 />
               </div>
 
               {/* Eligible Transferred Deductions */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-2">
-                  অ্যাডভাইসে অন্তর্ভুক্ত করার জন্য কর্মকর্তা/কর্মচারীর কিস্তি নির্বাচন করুন:
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto border border-slate-200 p-2 rounded-xl">
-                  {transferredLoans.map(loan => {
-                    const key = `${loan.id}-2026-10`;
-                    const isChecked = !!selectedItems[key];
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block font-extrabold text-slate-900">
+                    অ্যাডভাইসে অন্তর্ভুক্ত করার জন্য কর্মকর্তা/কর্মচারীর কিস্তি নির্বাচন করুন:
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleToggleSelectAll}
+                    className="text-xs text-emerald-800 hover:text-emerald-950 font-black hover:underline"
+                  >
+                    {transferredLoans.length > 0 && transferredLoans.every(l => selectedLoanIds[l.id]) ? 'সকল নির্বাচন বাতিল' : 'সকল নির্বাচন করুন'}
+                  </button>
+                </div>
 
-                    return (
-                      <label key={loan.id} className="flex items-center justify-between p-2 rounded-lg bg-slate-50 hover:bg-slate-100 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={(e) => setSelectedItems({ ...selectedItems, [key]: e.target.checked })}
-                            className="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4"
-                          />
-                          <div>
-                            <div className="font-semibold text-slate-900">{loan.employeeNameBn} ({loan.payId})</div>
-                            <div className="text-[11px] text-slate-500">{loan.lendingPbs} · ঋণ নং {loan.loanNo}</div>
+                <div className="space-y-2 max-h-56 overflow-y-auto border-2 border-slate-200 p-2.5 rounded-xl bg-slate-50">
+                  {transferredLoans.length === 0 ? (
+                    <div className="text-center py-6 text-slate-500 font-medium">
+                      কোনো বদলিকৃত কর্মকর্তা/কর্মচারীর ঋণ হিসাব পাওয়া যায়নি।
+                    </div>
+                  ) : (
+                    transferredLoans.map(loan => {
+                      const isChecked = !!selectedLoanIds[loan.id];
+
+                      return (
+                        <label 
+                          key={loan.id} 
+                          className={`flex items-center justify-between p-2.5 rounded-lg border-2 transition-all cursor-pointer ${
+                            isChecked 
+                              ? 'bg-emerald-50 border-emerald-400 shadow-2xs' 
+                              : 'bg-white border-slate-200 hover:bg-slate-100'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleLoan(loan.id)}
+                              className="rounded text-emerald-700 focus:ring-emerald-600 w-4 h-4 cursor-pointer"
+                            />
+                            <div>
+                              <div className="font-extrabold text-slate-950 text-xs sm:text-sm">
+                                {loan.employeeNameBn} ({loan.payId})
+                              </div>
+                              <div className="text-[11px] text-slate-600 font-medium">
+                                {loan.lendingPbs} · ঋণ নং {loan.loanNo}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="font-num font-bold text-slate-900">
-                          ৳ {loan.monthlyInstallment.toLocaleString()}
-                        </div>
-                      </label>
-                    );
-                  })}
+                          <div className="font-num font-black text-slate-950 text-xs sm:text-sm">
+                            ৳ {loan.monthlyInstallment.toLocaleString()}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Live Selection Summary */}
+                <div className="mt-2.5 p-3 rounded-xl bg-emerald-100/90 border-2 border-emerald-400 text-emerald-950 flex items-center justify-between text-xs sm:text-sm font-bold">
+                  <span>নির্বাচিত কর্মকর্তা/কর্মচারী: <strong>{toBnNumber(selectedLoansCount)}</strong> জন</span>
+                  <span className="font-num font-black text-sm sm:text-base">সর্বমোট: ৳ {selectedLoansTotalAmount.toLocaleString()}</span>
                 </div>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">মন্তব্য (ঐচ্ছিক)</label>
+                <label className="block font-extrabold text-slate-900 mb-1">মন্তব্য (ঐচ্ছিক)</label>
                 <input
                   type="text"
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="ব্যাংক অ্যাডভাইসের বিশেষ দ্রষ্টব্য..."
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs"
+                  className="w-full px-3.5 py-2 rounded-lg border-2 border-slate-300 font-medium text-slate-950 text-xs sm:text-sm shadow-2xs"
                 />
               </div>
 
-              <div className="pt-3 border-t border-slate-200 flex justify-end gap-2">
+              <div className="pt-4 border-t-2 border-slate-200 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-semibold"
+                  className="px-5 py-2.5 rounded-xl border-2 border-slate-300 hover:bg-slate-100 text-slate-900 text-xs sm:text-sm font-bold transition-colors shadow-2xs"
                 >
                   বাতিল
                 </button>
                 <button
                   type="submit"
-                  disabled={isProcessing}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-2xs"
+                  disabled={isProcessing || selectedLoansCount === 0}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 disabled:text-slate-500 text-white text-xs sm:text-sm font-black shadow-xs transition-all active:scale-95 disabled:active:scale-100 cursor-pointer disabled:cursor-not-allowed"
                 >
                   {isProcessing ? 'প্রস্তুত হচ্ছে...' : 'অ্যাডভাইস প্রস্তুত সম্পন্ন করুন'}
                 </button>

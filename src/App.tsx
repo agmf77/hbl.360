@@ -44,6 +44,7 @@ import { RepaymentsModal } from './components/RepaymentsModal';
 import { ProvisionsView } from './components/ProvisionsView';
 import { TransferredLoansView } from './components/TransferredLoansView';
 import { RemittancesView } from './components/RemittancesView';
+import { InterPbsRemittancesView } from './components/InterPbsRemittancesView';
 import { LedgerModal } from './components/LedgerModal';
 import { FiscalYearView } from './components/FiscalYearView';
 import { EmployeePortalView } from './components/EmployeePortalView';
@@ -775,7 +776,21 @@ export default function App() {
             />
           )}
 
-          {(activeTab === 'remittances' || activeTab === 'advices') && (
+          {activeTab === 'remittances' && (
+            <InterPbsRemittancesView
+              bankAdvices={bankAdvices}
+              loans={loans}
+              repayments={repayments}
+              settings={settings}
+              currentUser={currentUser}
+              onCreateAdvice={handleCreateBankAdvice}
+              onNavigate={setActiveTab}
+              onOpenBatchPayroll={() => setBatchPayrollModalOpen(true)}
+              isProcessing={isProcessing}
+            />
+          )}
+
+          {activeTab === 'advices' && (
             <RemittancesView
               bankAdvices={bankAdvices}
               loans={loans}

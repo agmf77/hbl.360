@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Calendar, Coins, CheckCircle2, AlertTriangle, AlertCircle, Info } from 'lucide-react';
+import { X, Calendar, Coins, CheckCircle2, Info } from 'lucide-react';
 import { Loan, Repayment } from '../types';
 
 interface BatchPayrollModalProps {
@@ -130,15 +130,15 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/75 p-4 backdrop-blur-xs">
-      <div className="bg-white rounded-2xl shadow-2xl border-2 border-slate-300 w-full max-w-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
+      <div className="bg-white rounded-2xl shadow-2xl border-2 border-slate-300 w-full max-w-2xl overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-150">
         {/* Header - High Contrast */}
-        <div className="px-5 py-4 border-b-2 border-slate-200 flex items-center justify-between bg-slate-100">
+        <div className="px-6 py-4.5 border-b-2 border-slate-200 flex items-center justify-between bg-slate-100">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-xs">
+            <div className="w-10 h-10 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold shadow-xs">
               <Coins className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h3 className="font-extrabold text-slate-950 text-base">
+              <h3 className="font-extrabold text-slate-950 text-lg">
                 ব্যাচ কিস্তি কর্তন রান কনফার্মেশন
               </h3>
               <p className="text-xs font-semibold text-slate-700">
@@ -149,7 +149,7 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
           <button
             onClick={onClose}
             disabled={isProcessing}
-            className="text-slate-500 hover:text-slate-900 p-1.5 rounded-lg hover:bg-slate-200 transition-colors border border-transparent hover:border-slate-300"
+            className="text-slate-500 hover:text-slate-900 p-2 rounded-lg hover:bg-slate-200 transition-colors border border-transparent hover:border-slate-300"
             title="বন্ধ করুন"
           >
             <X className="w-5 h-5" />
@@ -157,33 +157,21 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit} className="p-5 sm:p-6 space-y-4 text-xs">
-          {/* Confirmation Message Highlight Box - Crisp Dark Text on Warm Light Background */}
-          <div className="p-4 rounded-xl bg-amber-100 border-2 border-amber-400 text-amber-950 shadow-2xs space-y-1.5">
-            <div className="flex items-center gap-2 text-amber-950">
-              <AlertTriangle className="w-4 h-4 text-amber-700 shrink-0" />
-              <span className="font-black text-xs sm:text-sm">
-                কোন মাস পর্যন্ত ব্যাচ কর্তন রান করতে চান তা নিশ্চিত করুন:
-              </span>
-            </div>
-            <p className="text-xs font-medium text-amber-950 leading-relaxed pl-6">
-              নির্বাচিত মাস পর্যন্ত সকল সক্রিয় ঋণ হিসাবের নিয়মিত মাসিক কিস্তি হিসাবভুক্ত হবে এবং প্রত্যেকের ব্যক্তিগত খতিয়ানে (Ledger) আসল সমন্বয় অগ্রাধিকার নীতিতে পোস্টিং সম্পন্ন হবে।
-            </p>
-          </div>
-
+        <form onSubmit={handleSubmit} className="p-6 sm:p-7 space-y-5 text-xs sm:text-sm">
           {/* Month Selector - High Contrast */}
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="font-extrabold text-slate-950 text-xs sm:text-sm">
-                কর্তন মাস নির্বাচন (Deduction Month):
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="font-extrabold text-slate-950 text-sm flex items-center gap-2">
+                <Coins className="w-4 h-4 text-emerald-700" />
+                <span>কর্তন মাস নির্বাচন (Deduction Month):</span>
               </label>
-              <span className="text-xs font-black text-emerald-950 bg-emerald-100 px-2.5 py-0.5 rounded-md border border-emerald-400">
+              <span className="text-xs font-black text-emerald-950 bg-emerald-100 px-3 py-1 rounded-md border border-emerald-400">
                 {formatMonthBn(selectedMonth)} মাস পর্যন্ত
               </span>
             </div>
 
-            {/* Quick Month Presets */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2.5">
+            {/* Quick Month Presets (5 presets) */}
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               {monthPresets.map(preset => {
                 const isSelected = selectedMonth === preset.value;
                 return (
@@ -191,9 +179,9 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
                     type="button"
                     key={preset.value}
                     onClick={() => handleMonthChange(preset.value)}
-                    className={`px-3 py-2 rounded-lg text-xs font-bold border-2 text-left transition-all shadow-2xs ${
+                    className={`px-2.5 py-2.5 rounded-lg text-xs font-bold border-2 text-center transition-all shadow-2xs ${
                       isSelected
-                        ? 'bg-emerald-800 text-white border-emerald-900 shadow-xs ring-2 ring-emerald-500/40'
+                        ? 'bg-emerald-800 text-white border-emerald-950 shadow-xs ring-2 ring-emerald-500/40'
                         : 'bg-white hover:bg-slate-100 text-slate-900 border-slate-300'
                     }`}
                   >
@@ -204,25 +192,26 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
             </div>
 
             {/* Custom Month Picker */}
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <span className="text-xs font-bold text-slate-600 shrink-0">নির্দিষ্ট মাস বেছে নিন:</span>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => handleMonthChange(e.target.value)}
-                className="w-full px-3 py-2 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 bg-white text-xs focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
+                className="w-full sm:w-auto px-3.5 py-2 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 bg-white text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
                 required
               />
             </div>
           </div>
 
           {/* Posting Date - Auto Month End Date */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="font-extrabold text-slate-950 text-xs sm:text-sm flex items-center gap-1.5">
+          <div className="bg-slate-50/80 p-4 rounded-xl border border-slate-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <label className="font-extrabold text-slate-950 text-xs sm:text-sm flex items-center gap-2">
                 <Calendar className="w-4 h-4 text-emerald-700" />
                 <span>ভাউচার / পোস্টিং তারিখ (Posting Date):</span>
               </label>
-              <span className="text-[11px] font-bold text-emerald-900 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-300 font-sans">
+              <span className="text-xs font-bold text-emerald-900 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-300 font-sans">
                 মাসের শেষ তারিখ (Month End Date)
               </span>
             </div>
@@ -230,10 +219,10 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
               type="date"
               value={deductionDate}
               onChange={(e) => setDeductionDate(e.target.value)}
-              className="w-full px-3 py-2 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 bg-white text-xs focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
+              className="w-full px-3.5 py-2.5 rounded-lg border-2 border-slate-300 font-num font-bold text-slate-950 bg-white text-xs sm:text-sm focus:outline-none focus:border-emerald-600 focus:ring-1 focus:ring-emerald-600 shadow-2xs"
               required
             />
-            <div className="text-[11px] text-slate-600 mt-1 font-sans">
+            <div className="text-xs text-slate-600 mt-1.5 font-sans">
               * নির্বাচিত মাসের সমাপনী তারিখ স্বয়ংক্রিয়ভাবে সেট হয়েছে ({deductionDate})
             </div>
           </div>
@@ -252,52 +241,52 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
           )}
 
           {/* Batch Summary Preview Box - High Contrast */}
-          <div className="p-4 rounded-xl bg-slate-50 border-2 border-slate-300 space-y-2.5">
+          <div className="p-4 sm:p-5 rounded-xl bg-slate-50 border-2 border-slate-300 space-y-3">
             <span className="text-xs font-black text-slate-900 uppercase tracking-wider block">
               ব্যাচ কর্তন সারসংক্ষেপ ({formatMonthBn(selectedMonth)}):
             </span>
 
-            <div className="grid grid-cols-2 gap-2.5 text-xs">
-              <div className="bg-white p-3 rounded-lg border-2 border-slate-200 shadow-2xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+              <div className="bg-white p-3.5 rounded-lg border-2 border-slate-200 shadow-2xs">
                 <span className="text-slate-700 block text-xs font-bold">স্থানীয় বেতনভুক্ত ঋণ</span>
-                <strong className="text-slate-950 font-num font-black text-base">{activeLoans.length} টি</strong>
+                <strong className="text-slate-950 font-num font-black text-lg">{activeLoans.length} টি</strong>
               </div>
 
-              <div className="bg-white p-3 rounded-lg border-2 border-slate-200 shadow-2xs">
+              <div className="bg-white p-3.5 rounded-lg border-2 border-slate-200 shadow-2xs">
                 <span className="text-slate-700 block text-xs font-bold">এই রানে কর্তনযোগ্য</span>
-                <strong className="text-emerald-900 font-num font-black text-base">
+                <strong className="text-emerald-900 font-num font-black text-lg">
                   {pendingLoans.length} টি ঋণ
                 </strong>
                 {alreadyDeductedLoanIds.size > 0 && (
-                  <div className="text-[11px] text-slate-600 font-medium">
+                  <div className="text-[11px] text-slate-600 font-medium mt-0.5">
                     ({alreadyDeductedLoanIds.size} টি ইতিমধ্যে কর্তিত)
                   </div>
                 )}
               </div>
-            </div>
 
-            <div className="bg-emerald-100/90 p-3 rounded-lg border-2 border-emerald-400 text-emerald-950 flex items-center justify-between shadow-2xs">
-              <div>
-                <span className="text-emerald-950 font-black block text-xs">মোট আনুমানিক কিস্তি আদায়:</span>
-                <span className="text-[11px] text-emerald-900 font-medium font-sans">
-                  {formatMonthBn(selectedMonth)} মাসের নিয়মিত মাসিক কর্তন
-                </span>
-              </div>
-              <div className="text-lg sm:text-xl font-black text-emerald-950 font-num">
-                {totalBatchAmount.toLocaleString()}
+              <div className="bg-emerald-100/90 p-3.5 rounded-lg border-2 border-emerald-400 text-emerald-950 flex flex-col justify-between shadow-2xs">
+                <div>
+                  <span className="text-emerald-950 font-black block text-xs">মোট আনুমানিক কিস্তি আদায়:</span>
+                  <span className="text-[11px] text-emerald-900 font-medium font-sans">
+                    {formatMonthBn(selectedMonth)} নিয়মিত কর্তন
+                  </span>
+                </div>
+                <div className="text-xl sm:text-2xl font-black text-emerald-950 font-num mt-1">
+                  ৳ {totalBatchAmount.toLocaleString()}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Confirmation Checkbox - High Contrast */}
-          <label className="flex items-start gap-2.5 cursor-pointer pt-1 select-none">
+          <label className="flex items-start gap-3 cursor-pointer pt-1 select-none">
             <input
               type="checkbox"
               checked={confirmedCheck}
               onChange={(e) => setConfirmedCheck(e.target.checked)}
               className="mt-0.5 rounded text-emerald-700 focus:ring-emerald-600 w-4 h-4 border-2 border-slate-400 cursor-pointer"
             />
-            <span className="text-xs font-bold text-slate-950 leading-relaxed">
+            <span className="text-xs sm:text-sm font-bold text-slate-950 leading-relaxed">
               আমি নিশ্চিত করছি যে কর্মকর্তা-কর্মচারীদের <strong>{formatMonthBn(selectedMonth)}</strong> মাস পর্যন্ত নিয়মিত গৃহ ঋণ কিস্তি কর্তন রান করা হবে।
             </span>
           </label>
@@ -308,7 +297,7 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isProcessing}
-              className="px-4 py-2 rounded-xl border-2 border-slate-300 hover:bg-slate-100 text-slate-900 font-bold text-xs transition-colors shadow-2xs"
+              className="px-5 py-2.5 rounded-xl border-2 border-slate-300 hover:bg-slate-100 text-slate-900 font-bold text-xs sm:text-sm transition-colors shadow-2xs"
             >
               বাতিল
             </button>
@@ -316,7 +305,7 @@ export const BatchPayrollModal: React.FC<BatchPayrollModalProps> = ({
             <button
               type="submit"
               disabled={isProcessing || !confirmedCheck || pendingLoans.length === 0}
-              className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 disabled:text-slate-500 text-white font-black text-xs transition-all shadow-xs flex items-center gap-2 active:scale-95 disabled:active:scale-100 border border-emerald-950"
+              className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 disabled:bg-slate-300 disabled:text-slate-500 text-white font-black text-xs sm:text-sm transition-all shadow-xs flex items-center gap-2 active:scale-95 disabled:active:scale-100 border border-emerald-950 cursor-pointer disabled:cursor-not-allowed"
             >
               {isProcessing ? (
                 <>
