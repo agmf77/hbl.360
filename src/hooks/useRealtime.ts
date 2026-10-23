@@ -15,6 +15,13 @@ export function useRealtime({ onEvent, enableSound = true }: RealtimeHookOptions
   const reconnectTimeoutRef = useRef<any>(null);
   const pingIntervalRef = useRef<any>(null);
   const pingStartTimeRef = useRef<number>(0);
+  const retryCountRef = useRef<number>(0);
+  const onEventRef = useRef(onEvent);
+
+  // Keep latest onEvent callback without triggering reconnection
+  useEffect(() => {
+    onEventRef.current = onEvent;
+  }, [onEvent]);
 
   // Play subtle pleasant chime on live incoming events
   const playChime = useCallback(() => {
@@ -53,8 +60,21 @@ export function useRealtime({ onEvent, enableSound = true }: RealtimeHookOptions
   }, [playChime]);
 
   const connect = useCallback(() => {
+    // Check if hosted on serverless platform (e.g. Vercel) where persistent WebSockets aren't hosted
+    const isVercel = typeof window !== 'undefined' && window.location.hostname.includes('vercel.app');
+    if (isVercel && retryCountRef.current >= 2) {
+      // Gracefully set disconnected status without spamming infinite connection loops
+      setStatus('disconnected');
+      return;
+    }
+
     if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
       return;
+    }
+
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     }
 
     setStatus('connecting');
@@ -66,6 +86,7 @@ export function useRealtime({ onEvent, enableSound = true }: RealtimeHookOptions
       wsRef.current = socket;
 
       socket.onopen = () => {
+        retryCountRef.current = 0;
         setStatus('connected');
         // Start ping interval for latency measurement
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
@@ -156,34 +177,39 @@ export function useRealtime({ onEvent, enableSound = true }: RealtimeHookOptions
             );
           }
 
-          if (onEvent) {
-            onEvent(data);
+          if (onEventRef.current) {
+            onEventRef.current(data);
           }
-        } catch (err) {
-          console.warn('[WS] Parse message error:', err);
+        } catch {
+          // Ignore parse errors
         }
       };
 
       socket.onclose = () => {
         setStatus('disconnected');
         if (pingIntervalRef.current) clearInterval(pingIntervalRef.current);
-        // Attempt reconnect after 3 seconds
-        reconnectTimeoutRef.current = setTimeout(() => {
-          connect();
-        }, 3000);
+        retryCountRef.current++;
+
+        // Exponential backoff to prevent console flood and UI lag
+        const delay = isVercel 
+          ? (retryCountRef.current > 2 ? 60000 : 5000)
+          : Math.min(30000, 2000 * Math.pow(1.5, retryCountRef.current));
+
+        if (!reconnectTimeoutRef.current && (!isVercel || retryCountRef.current <= 2)) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            reconnectTimeoutRef.current = null;
+            connect();
+          }, delay);
+        }
       };
 
       socket.onerror = () => {
         setStatus('error');
       };
-    } catch (err) {
-      console.error('[WS] Connection initiation error:', err);
+    } catch {
       setStatus('error');
-      reconnectTimeoutRef.current = setTimeout(() => {
-        connect();
-      }, 5000);
     }
-  }, [addLiveEvent, onEvent]);
+  }, [addLiveEvent]);
 
   useEffect(() => {
     connect();

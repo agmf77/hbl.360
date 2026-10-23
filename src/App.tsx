@@ -141,6 +141,19 @@ export default function App() {
     setRepaymentModalOpen(true);
   };
 
+  // Safe API Fetcher to prevent JSON parse crashes on HTML error pages (e.g. Vercel deployment)
+  const safeFetchJson = async (url: string) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const contentType = res.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) return null;
+      return await res.json();
+    } catch {
+      return null;
+    }
+  };
+
   // Fetch initial data from local server
   const refreshAllData = useCallback(async () => {
     try {
@@ -156,31 +169,31 @@ export default function App() {
         noticesRes,
         pbsListRes
       ] = await Promise.all([
-        fetch('/api/dashboard/stats').then(r => r.json()),
-        fetch('/api/loans').then(r => r.json()),
-        fetch('/api/employees').then(r => r.json()),
-        fetch('/api/repayments').then(r => r.json()),
-        fetch('/api/provisions').then(r => r.json()),
-        fetch('/api/remittances').then(r => r.json()),
-        fetch('/api/settings').then(r => r.json()),
-        fetch('/api/recyclebin').then(r => r.json()),
-        fetch('/api/demand-notices').then(r => r.json()),
-        fetch('/api/pbs/list').then(r => r.json())
+        safeFetchJson('/api/dashboard/stats'),
+        safeFetchJson('/api/loans'),
+        safeFetchJson('/api/employees'),
+        safeFetchJson('/api/repayments'),
+        safeFetchJson('/api/provisions'),
+        safeFetchJson('/api/remittances'),
+        safeFetchJson('/api/settings'),
+        safeFetchJson('/api/recyclebin'),
+        safeFetchJson('/api/demand-notices'),
+        safeFetchJson('/api/pbs/list')
       ]);
 
-      if (statsRes.success) setStats(statsRes.stats);
-      if (loansRes.success) setLoans(loansRes.loans);
-      if (employeesRes.success) setEmployees(employeesRes.employees);
-      if (repaymentsRes.success) setRepayments(repaymentsRes.repayments);
-      if (provisionsRes.success) setProvisions(provisionsRes.provisions);
-      if (advicesRes.success) setBankAdvices(advicesRes.bankAdvices);
-      if (settingsRes.success) setSettings(settingsRes.settings);
-      if (recycleRes.success) setRecycleItems(recycleRes.items);
-      if (noticesRes.success) setDemandNotices(noticesRes.demandNotices);
-      if (pbsListRes.success) setPbsList(pbsListRes.pbsList);
+      if (statsRes?.success) setStats(statsRes.stats);
+      if (loansRes?.success) setLoans(loansRes.loans);
+      if (employeesRes?.success) setEmployees(employeesRes.employees);
+      if (repaymentsRes?.success) setRepayments(repaymentsRes.repayments);
+      if (provisionsRes?.success) setProvisions(provisionsRes.provisions);
+      if (advicesRes?.success) setBankAdvices(advicesRes.bankAdvices);
+      if (settingsRes?.success) setSettings(settingsRes.settings);
+      if (recycleRes?.success) setRecycleItems(recycleRes.items);
+      if (noticesRes?.success) setDemandNotices(noticesRes.demandNotices);
+      if (pbsListRes?.success) setPbsList(pbsListRes.pbsList);
 
       // Seed Firestore if empty
-      if (loansRes.success && employeesRes.success && settingsRes.success) {
+      if (loansRes?.success && employeesRes?.success && settingsRes?.settings) {
         FirestoreSyncService.seedIfEmpty({
           loans: loansRes.loans,
           employees: employeesRes.employees,
@@ -188,7 +201,7 @@ export default function App() {
         });
       }
     } catch (err) {
-      console.error('Data refresh error:', err);
+      console.warn('Data refresh notice:', err);
     }
   }, []);
 
@@ -212,12 +225,14 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
-  // Real-time WebSocket hook
+  // Real-time WebSocket hook with memoized callback
+  const handleRealtimeEvent = useCallback(() => {
+    refreshAllData();
+  }, [refreshAllData]);
+
   const { isConnected, latencyMs, activeUsers, liveEvents } = useRealtime({
     enableSound: soundEnabled,
-    onEvent: () => {
-      refreshAllData();
-    }
+    onEvent: handleRealtimeEvent
   });
 
   useEffect(() => {
