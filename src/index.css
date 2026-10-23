@@ -1,0 +1,144 @@
+@import "tailwindcss";
+
+@layer base {
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: 'Hind Siliguri', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    letter-spacing: 0.01em;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Number figures styling */
+  .font-num {
+    font-family: 'Inter', 'JetBrains Mono', 'Hind Siliguri', sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Global readable typography scaling for Bengali script */
+.text-xs {
+  font-size: 0.825rem !important; /* ~13.2px */
+  line-height: 1.35rem !important;
+}
+
+.text-sm {
+  font-size: 0.95rem !important; /* ~15.2px */
+  line-height: 1.5rem !important;
+}
+
+.text-base {
+  font-size: 1.075rem !important; /* ~17.2px */
+  line-height: 1.65rem !important;
+}
+
+.text-\[10px\] {
+  font-size: 0.75rem !important; /* 12px */
+  line-height: 1.15rem !important;
+}
+
+.text-\[11px\] {
+  font-size: 0.825rem !important; /* ~13.2px */
+  line-height: 1.25rem !important;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Official High-Contrast Accounting Print Styles */
+@media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  body {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10pt !important;
+  }
+
+  /* Prevent any dark background from printing as a black block */
+  .bg-slate-900,
+  .bg-slate-950,
+  .bg-slate-800,
+  .bg-slate-700,
+  .bg-black {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #94a3b8 !important;
+  }
+
+  /* Ensure text that was white on dark backgrounds prints dark */
+  .bg-slate-900 .text-white,
+  .bg-slate-950 .text-white,
+  .bg-slate-800 .text-white,
+  .text-white {
+    color: #0f172a !important;
+  }
+
+  .text-slate-400,
+  .text-slate-300 {
+    color: #475569 !important;
+  }
+
+  /* Crisp table borders for accounting printouts */
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border-color: #cbd5e1 !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-card {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  @page {
+    margin: 12mm;
+    size: A4 portrait;
+  }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite ease-in-out;
+}

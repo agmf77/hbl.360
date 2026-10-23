@@ -1,0 +1,8 @@
+{
+  "name": "hbl360",
+  "description": "PBS  House loan Management",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
